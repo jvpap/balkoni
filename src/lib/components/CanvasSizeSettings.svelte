@@ -13,8 +13,7 @@
 	<h3 class="m-0 mb-2.5 text-sm text-slate-600 font-medium">Editor-Gr&ouml;&szlig;e</h3>
 	<div class="flex gap-4 items-end">
 		<div class="flex items-center gap-2">
-			<label for="canvas-width" class="text-[11px] text-slate-500 font-medium">Breite (mm):</label
-			>
+			<label for="canvas-width" class="text-[11px] text-slate-500 font-medium">Breite (mm):</label>
 			<input
 				id="canvas-width"
 				type="number"

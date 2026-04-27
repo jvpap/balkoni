@@ -245,7 +245,9 @@
 		<!-- Neuen Punkt manuell hinzufügen -->
 		<div class="flex gap-1 items-center mt-1 pt-1 border-t border-slate-200">
 			<div class="flex items-center gap-0.5 flex-1">
-				<label for="new-point-x" class="text-[9px] text-slate-500 uppercase tracking-wide w-3">X</label>
+				<label for="new-point-x" class="text-[9px] text-slate-500 uppercase tracking-wide w-3"
+					>X</label
+				>
 				<input
 					id="new-point-x"
 					type="number"
@@ -255,7 +257,9 @@
 				/>
 			</div>
 			<div class="flex items-center gap-0.5 flex-1">
-				<label for="new-point-y" class="text-[9px] text-slate-500 uppercase tracking-wide w-3">Y</label>
+				<label for="new-point-y" class="text-[9px] text-slate-500 uppercase tracking-wide w-3"
+					>Y</label
+				>
 				<input
 					id="new-point-y"
 					type="number"
