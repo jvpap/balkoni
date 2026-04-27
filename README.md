@@ -30,6 +30,10 @@ npm run dev
 
 Die App läuft anschließend unter <http://localhost:5174>.
 
+### Live Demo
+
+Das Projekt ist bereits über GitHub Pages unter [https://jvpap.github.io/balkoni/](https://jvpap.github.io/balkoni/) verfügbar.
+
 ### Production-Build
 
 ```bash
