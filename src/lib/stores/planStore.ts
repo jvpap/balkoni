@@ -62,7 +62,11 @@ function createPlanStore() {
 			persist(() => ({
 				isDrawingPolygon: true,
 				polygonPoints: [],
-				placedPlanks: []
+				generatedPlanks: [],
+				selectedPlankIndex: -1,
+				placedPlanks: [],
+				totalWaste: 0,
+				totalPlankArea: 0
 			})),
 		finishDrawing: () => persist(() => ({ isDrawingPolygon: false })),
 		addPolygonPoint: (x: number, y: number) =>

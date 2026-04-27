@@ -28,7 +28,6 @@
 
 	const { SCALE } = CONSTANTS;
 	const MOVE_STEP = SCALE / 10;
-	const MOVE_STEP_FAST = SCALE * 5;
 	const MIN_PX_WIDTH = 600;
 	const MIN_PX_HEIGHT = 500;
 
@@ -228,27 +227,39 @@
 
 			// Tastatur-Steuerung
 			handleKeydown = function (e: KeyboardEvent) {
-				if (!$planStore.isDrawingPolygon || e.repeat) return;
+				if (!$planStore.isDrawingPolygon) return;
 
 				useKeyboardMode = true;
-				const step = e.shiftKey ? MOVE_STEP_FAST : MOVE_STEP;
+				let stepX = MOVE_STEP;
+				let stepY = MOVE_STEP;
+
+				if (e.ctrlKey) {
+					// 5 mm Schritte
+					stepX = conv.mmToPx_X(10);
+					stepY = conv.mmToPx_Y(10);
+				} else if (e.shiftKey) {
+					// 1 Meter Schritte
+					stepX = conv.mmToPx_X(1000);
+					stepY = conv.mmToPx_Y(1000);
+				}
+
 				let moved = false;
 
 				switch (e.key) {
 					case 'ArrowUp':
-						crosshairPos.y = Math.max(0, crosshairPos.y - step);
+						crosshairPos.y = Math.max(0, crosshairPos.y - stepY);
 						moved = true;
 						break;
 					case 'ArrowDown':
-						crosshairPos.y = Math.min(canvasPxHeight, crosshairPos.y + step);
+						crosshairPos.y = Math.min(canvasPxHeight, crosshairPos.y + stepY);
 						moved = true;
 						break;
 					case 'ArrowLeft':
-						crosshairPos.x = Math.max(0, crosshairPos.x - step);
+						crosshairPos.x = Math.max(0, crosshairPos.x - stepX);
 						moved = true;
 						break;
 					case 'ArrowRight':
-						crosshairPos.x = Math.min(canvasPxWidth, crosshairPos.x + step);
+						crosshairPos.x = Math.min(canvasPxWidth, crosshairPos.x + stepX);
 						moved = true;
 						break;
 					case ' ':

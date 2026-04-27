@@ -2,6 +2,9 @@
 	import { planStore, polygonArea } from '$lib/stores/planStore';
 
 	let fileInput: HTMLInputElement | null = null;
+	let newPointX = '';
+	let newPointY = '';
+	let draggedIndex: number | null = null;
 
 	// Punkte sind bereits in mm gespeichert
 	function toMM(val: number): number {
@@ -26,6 +29,50 @@
 
 	function selectPoint(index: number) {
 		planStore.selectPoint(index);
+	}
+
+	function addPoint() {
+		const x = parseInt(newPointX) || 0;
+		const y = parseInt(newPointY) || 0;
+		planStore.addPolygonPoint(x, y);
+		newPointX = '';
+		newPointY = '';
+	}
+
+	function handleDragStart(index: number, event: DragEvent) {
+		draggedIndex = index;
+		if (event.dataTransfer) {
+			event.dataTransfer.effectAllowed = 'move';
+		}
+	}
+
+	function handleDragOver(event: DragEvent) {
+		event.preventDefault();
+		if (event.dataTransfer) {
+			event.dataTransfer.dropEffect = 'move';
+		}
+	}
+
+	function handleDrop(targetIndex: number, event: DragEvent) {
+		event.preventDefault();
+		if (draggedIndex === null || draggedIndex === targetIndex) return;
+
+		const points = [...$planStore.polygonPoints];
+		const fromIdx = draggedIndex * 2;
+		const toIdx = targetIndex * 2;
+
+		// Punkt aus alter Position entfernen
+		const [x, y] = points.splice(fromIdx, 2);
+
+		// Punkt an neuer Position einfügen
+		points.splice(toIdx, 0, x, y);
+
+		planStore.setPolygonPoints(points);
+		draggedIndex = null;
+	}
+
+	function handleDragEnd() {
+		draggedIndex = null;
 	}
 
 	function exportPoints() {
@@ -119,8 +166,15 @@
 						class:border-blue-500={$planStore.selectedPointIndex === i}
 						class:bg-blue-50={$planStore.selectedPointIndex === i}
 						class:shadow-[0_0_0_2px_rgba(37,99,235,0.2)]={$planStore.selectedPointIndex === i}
+						class:opacity-50={draggedIndex === i}
+						class:border-dashed={draggedIndex !== null && draggedIndex !== i}
 						on:click={() => selectPoint(i)}
 						on:keydown={(e) => e.key === 'Enter' && selectPoint(i)}
+						on:dragstart={(e) => handleDragStart(i, e)}
+						on:dragover={handleDragOver}
+						on:drop={(e) => handleDrop(i, e)}
+						on:dragend={handleDragEnd}
+						draggable={true}
 						tabindex="0"
 						role="button"
 					>
@@ -187,6 +241,37 @@
 				{/each}
 			</div>
 		{/if}
+
+		<!-- Neuen Punkt manuell hinzufügen -->
+		<div class="flex gap-1 items-center mt-1 pt-1 border-t border-slate-200">
+			<div class="flex items-center gap-0.5 flex-1">
+				<label for="new-point-x" class="text-[9px] text-slate-500 uppercase tracking-wide w-3">X</label>
+				<input
+					id="new-point-x"
+					type="number"
+					bind:value={newPointX}
+					placeholder="0"
+					class="w-full min-w-0 px-1 py-0.5 border border-slate-300 rounded text-[10px] font-mono focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20"
+				/>
+			</div>
+			<div class="flex items-center gap-0.5 flex-1">
+				<label for="new-point-y" class="text-[9px] text-slate-500 uppercase tracking-wide w-3">Y</label>
+				<input
+					id="new-point-y"
+					type="number"
+					bind:value={newPointY}
+					placeholder="0"
+					class="w-full min-w-0 px-1 py-0.5 border border-slate-300 rounded text-[10px] font-mono focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20"
+				/>
+			</div>
+			<button
+				on:click={addPoint}
+				disabled={newPointX === '' || newPointY === ''}
+				class="px-1.5 py-0.5 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white text-[10px] rounded transition-colors cursor-pointer whitespace-nowrap"
+			>
+				+
+			</button>
+		</div>
 	</div>
 
 	<div class="bg-slate-50 border border-slate-200 rounded-lg p-3 flex gap-2">

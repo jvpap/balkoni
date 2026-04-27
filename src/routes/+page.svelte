@@ -3,12 +3,21 @@
 	import CanvasSizeSettings from '$lib/components/CanvasSizeSettings.svelte';
 	import MousePosition from '$lib/components/MousePosition.svelte';
 	import PointList from '$lib/components/PointList.svelte';
+	import { planStore } from '$lib/stores/planStore';
 	import PlankSettings from '$lib/components/PlankSettings.svelte';
 	import Statistics from '$lib/components/Statistics.svelte';
 	import CuttingOptimizer from '$lib/components/CuttingOptimizer.svelte';
 
 	let canvasStage: any = null;
 	let sidebarCollapsed = false;
+
+	function startDrawing() {
+		planStore.startDrawing();
+	}
+
+	function finishDrawing() {
+		planStore.finishDrawing();
+	}
 </script>
 
 <svelte:head>
@@ -21,15 +30,34 @@
 		class:w-[340px]={!sidebarCollapsed}
 		class:w-10={sidebarCollapsed}
 	>
-		<button
-			type="button"
-			on:click={() => (sidebarCollapsed = !sidebarCollapsed)}
-			title={sidebarCollapsed ? 'Eingabe einblenden' : 'Eingabe ausblenden'}
-			aria-label={sidebarCollapsed ? 'Eingabe einblenden' : 'Eingabe ausblenden'}
-			class="self-end flex-shrink-0 w-10 h-10 flex items-center justify-center rounded border border-gray-300 bg-white hover:bg-gray-100 text-gray-600 cursor-pointer"
-		>
-			{sidebarCollapsed ? '›' : '‹'}
-		</button>
+		<div class="flex gap-2 items-center">
+			{#if !sidebarCollapsed}
+				<button
+					type="button"
+					on:click={startDrawing}
+					class="flex-shrink-0 px-2 py-1 bg-red-300 hover:bg-red-700 text-white text-xs rounded transition-colors cursor-pointer"
+				>
+					Löschen + Eckpunkte editieren
+				</button>
+				<button
+					type="button"
+					on:click={finishDrawing}
+					disabled={!$planStore.isDrawingPolygon}
+					class="flex-shrink-0 px-2 py-1 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white text-xs rounded transition-colors cursor-pointer"
+				>
+					Fertig
+				</button>
+			{/if}
+			<button
+				type="button"
+				on:click={() => (sidebarCollapsed = !sidebarCollapsed)}
+				title={sidebarCollapsed ? 'Eingabe einblenden' : 'Eingabe ausblenden'}
+				aria-label={sidebarCollapsed ? 'Eingabe einblenden' : 'Eingabe ausblenden'}
+				class="ml-auto flex-shrink-0 w-10 h-10 flex items-center justify-center rounded border border-gray-300 bg-white hover:bg-gray-100 text-gray-600 cursor-pointer"
+			>
+				{sidebarCollapsed ? '›' : '‹'}
+			</button>
+		</div>
 
 		{#if !sidebarCollapsed}
 			<div class="flex-1 min-h-0 overflow-y-auto flex flex-col gap-4">
