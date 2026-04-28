@@ -36,6 +36,8 @@ describe('optimizeCutting (cuttable)', () => {
 	it('liefert leeres Ergebnis für leere Cuts', () => {
 		const r = optimizeCutting([], stockLengths, 3);
 		expect(r.stockPlanks).toEqual([]);
+		expect(r.totalSawKerfWaste).toBe(0);
+		expect(r.totalRemainder).toBe(0);
 		expect(r.totalWaste).toBe(0);
 		expect(r.unassigned).toEqual([]);
 	});
@@ -47,21 +49,51 @@ describe('optimizeCutting (cuttable)', () => {
 	});
 
 	it('platziert einen einzelnen Zuschnitt in die kleinstmögliche passende Rohdiele', () => {
+		// 800 in 1000 mit kerf=3: rawRem=200 >= kerf=3 → Trim-Schnitt: kerf=3, remainder=197
 		const r = optimizeCutting(cuts(800), stockLengths, 3);
 		expect(r.stockPlanks).toHaveLength(1);
 		expect(r.stockPlanks[0].stockLength).toBe(1000);
 		expect(r.stockPlanks[0].cuts.map((c) => c.length)).toEqual([800]);
+		expect(r.stockPlanks[0].sawKerfWaste).toBe(3);
+		expect(r.stockPlanks[0].remainder).toBe(197);
 		expect(r.stockPlanks[0].waste).toBe(200);
 	});
 
-	it('berücksichtigt N-1 Sägeschnitte pro Rohdiele', () => {
-		// 3 Stücke à 1000 mm in eine 5000-Rohdiele bei 5 mm Kerf:
-		// nutzbar = 5000, verbraucht = 3·1000 + 2·5 = 3010, Verschnitt = 1990
+	it('Beispiel: 500+450 in 1000 (kerf=4) → Verschnitt 8, Abschnitt 42', () => {
+		const r = optimizeCutting(cuts(500, 450), [1000], 4);
+		expect(r.stockPlanks).toHaveLength(1);
+		expect(r.stockPlanks[0].sawKerfWaste).toBe(8);
+		expect(r.stockPlanks[0].remainder).toBe(42);
+		expect(r.stockPlanks[0].waste).toBe(50);
+	});
+
+	it('Beispiel: 500+495 in 1000 (kerf=4) → Verschnitt 5, kein Abschnitt (absorbiert)', () => {
+		const r = optimizeCutting(cuts(500, 495), [1000], 4);
+		expect(r.stockPlanks).toHaveLength(1);
+		expect(r.stockPlanks[0].sawKerfWaste).toBe(5);
+		expect(r.stockPlanks[0].remainder).toBe(0);
+		expect(r.stockPlanks[0].waste).toBe(5);
+	});
+
+	it('Beispiel: 1000+500+490 in 2000 (kerf=4) → Verschnitt 10, kein Abschnitt', () => {
+		const r = optimizeCutting(cuts(1000, 500, 490), [2000], 4);
+		expect(r.stockPlanks).toHaveLength(1);
+		expect(r.stockPlanks[0].sawKerfWaste).toBe(10);
+		expect(r.stockPlanks[0].remainder).toBe(0);
+		expect(r.stockPlanks[0].waste).toBe(10);
+	});
+
+	it('berücksichtigt N-1 Sägeschnitte + Trim-Schnitt pro Rohdiele', () => {
+		// 3×1000 in 5000 (kerf=5): baseKerf=10, rawRem=1990 >= kerf=5 → Trim-Schnitt: kerf=15, rem=1985
 		const r = optimizeCutting(cuts(1000, 1000, 1000), [5000], 5);
 		expect(r.stockPlanks).toHaveLength(1);
 		expect(r.stockPlanks[0].cuts).toHaveLength(3);
-		expect(r.stockPlanks[0].waste).toBe(1990);
-		expect(r.totalWaste).toBe(1990);
+		expect(r.stockPlanks[0].sawKerfWaste).toBe(15);
+		expect(r.stockPlanks[0].remainder).toBe(1985);
+		expect(r.stockPlanks[0].waste).toBe(2000);
+		expect(r.totalSawKerfWaste).toBe(15);
+		expect(r.totalRemainder).toBe(1985);
+		expect(r.totalWaste).toBe(2000);
 	});
 
 	it('akzeptiert KEINE Kombination, die mit Kerf physikalisch nicht passt', () => {
@@ -72,7 +104,7 @@ describe('optimizeCutting (cuttable)', () => {
 		expect(allInOne).toBeUndefined();
 	});
 
-	it('garantiert: sum(cuts) + (N-1)*kerf <= stockLength für jede Rohdiele', () => {
+	it('garantiert: sum(cuts) + sawKerfWaste + remainder = stockLength für jede Rohdiele', () => {
 		const sawKerf = 5;
 		const r = optimizeCutting(
 			cuts(1333, 1331, 1328, 800, 1500, 2200, 1750, 1900),
@@ -81,8 +113,8 @@ describe('optimizeCutting (cuttable)', () => {
 		);
 		for (const sp of r.stockPlanks) {
 			const sumLen = sp.cuts.reduce((s, c) => s + c.length, 0);
-			const kerfTotal = Math.max(0, sp.cuts.length - 1) * sawKerf;
-			expect(sumLen + kerfTotal).toBeLessThanOrEqual(sp.stockLength);
+			expect(sumLen + sp.sawKerfWaste + sp.remainder).toBe(sp.stockLength);
+			expect(sp.waste).toBe(sp.sawKerfWaste + sp.remainder);
 		}
 	});
 
@@ -93,16 +125,22 @@ describe('optimizeCutting (cuttable)', () => {
 		expect(totalCutsAssigned).toBe(4);
 	});
 
-	it('totalWaste entspricht der Summe der einzelnen Reste', () => {
+	it('totalWaste/totalSawKerfWaste/totalRemainder sind Summen der einzelnen Werte', () => {
 		const r = optimizeCutting(cuts(1000, 2000, 1500, 500, 800, 1200), [2000, 5000], 5);
-		const sum = r.stockPlanks.reduce((s, sp) => s + sp.waste, 0);
-		expect(r.totalWaste).toBe(sum);
+		const sumK = r.stockPlanks.reduce((s, sp) => s + sp.sawKerfWaste, 0);
+		const sumR = r.stockPlanks.reduce((s, sp) => s + sp.remainder, 0);
+		const sumW = r.stockPlanks.reduce((s, sp) => s + sp.waste, 0);
+		expect(r.totalSawKerfWaste).toBe(sumK);
+		expect(r.totalRemainder).toBe(sumR);
+		expect(r.totalWaste).toBe(sumW);
 	});
 
 	it('funktioniert mit kerf=0', () => {
 		const r = optimizeCutting(cuts(1000, 1000, 1000, 1000, 1000), [5000], 0);
 		expect(r.stockPlanks).toHaveLength(1);
 		expect(r.stockPlanks[0].cuts).toHaveLength(5);
+		expect(r.stockPlanks[0].sawKerfWaste).toBe(0);
+		expect(r.stockPlanks[0].remainder).toBe(0);
 		expect(r.stockPlanks[0].waste).toBe(0);
 	});
 
@@ -111,8 +149,7 @@ describe('optimizeCutting (cuttable)', () => {
 		const r = optimizeCutting(cuts(1333.4, 1331.7, 1328.2), [4000], sawKerf);
 		for (const sp of r.stockPlanks) {
 			const sumLen = sp.cuts.reduce((s, c) => s + c.length, 0);
-			const kerfTotal = Math.max(0, sp.cuts.length - 1) * sawKerf;
-			expect(sumLen + kerfTotal).toBeLessThanOrEqual(sp.stockLength + 1e-9);
+			expect(sumLen + sp.sawKerfWaste + sp.remainder).toBeLessThanOrEqual(sp.stockLength + 1e-9);
 		}
 	});
 });
@@ -129,9 +166,13 @@ describe('optimizeCutting (cuttable=false)', () => {
 		expect(r.stockPlanks.every((sp) => sp.cuts.length === 1)).toBe(true);
 	});
 
-	it('Verschnitt = stockLength - cut für jede Rohdiele', () => {
+	it('Verschnitt = stockLength - cut für jede Rohdiele (nur Abschnitt, kein Sägeschnitt)', () => {
 		const r = optimizeCutting(cuts(800), stockLengths, 5, false);
+		expect(r.stockPlanks[0].sawKerfWaste).toBe(0);
+		expect(r.stockPlanks[0].remainder).toBe(200);
 		expect(r.stockPlanks[0].waste).toBe(200);
+		expect(r.totalSawKerfWaste).toBe(0);
+		expect(r.totalRemainder).toBe(200);
 		expect(r.totalWaste).toBe(200);
 	});
 

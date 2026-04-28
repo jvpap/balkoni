@@ -53,6 +53,8 @@
 			return [] as {
 				stockLength: number;
 				cutLengths: number[]; // gerundet, absteigend sortiert
+				sawKerfWaste: number;
+				remainder: number;
 				waste: number;
 				count: number;
 			}[];
@@ -61,6 +63,8 @@
 			{
 				stockLength: number;
 				cutLengths: number[];
+				sawKerfWaste: number;
+				remainder: number;
 				waste: number;
 				count: number;
 			}
@@ -75,6 +79,8 @@
 				groups.set(key, {
 					stockLength: plank.stockLength,
 					cutLengths: lengths,
+					sawKerfWaste: Math.round(plank.sawKerfWaste),
+					remainder: Math.round(plank.remainder),
 					waste: Math.round(plank.waste),
 					count: 1
 				});
@@ -148,6 +154,7 @@
 			</ul>
 			<p class="my-1.5 text-sm text-gray-700">
 				Gesamtverschnitt: <strong>{Math.round(result.totalWaste)} mm</strong>
+				(Säge: {Math.round(result.totalSawKerfWaste)} mm, Abschnitt: {Math.round(result.totalRemainder)} mm)
 			</p>
 
 			{#if result.unassigned.length > 0}
@@ -163,7 +170,8 @@
 							<th class="text-left py-1">Anz.</th>
 							<th class="text-left py-1">Rohdiele</th>
 							<th class="text-left py-1">Zuschnitte</th>
-							<th class="text-right py-1">Rest/Diele</th>
+							<th class="text-right py-1">Verschnitt</th>
+							<th class="text-right py-1">Abschnitt</th>
 						</tr>
 					</thead>
 					<tbody>
@@ -180,7 +188,8 @@
 										</span>
 									{/each}
 								</td>
-								<td class="text-right py-1 text-gray-600">{group.waste} mm</td>
+								<td class="text-right py-1 text-gray-600">{group.sawKerfWaste} mm</td>
+								<td class="text-right py-1 text-gray-600">{group.remainder} mm</td>
 							</tr>
 						{/each}
 					</tbody>

@@ -18,17 +18,54 @@ export interface StockPlank {
 	stockLength: number;
 	/** Zuschnitte, die aus dieser Rohdiele entstehen */
 	cuts: Cut[];
-	/** Verschnitt in mm (nicht genutztes Material) */
+	/** Verschnitt durch Sägeschnitte in mm (inkl. ggf. absorbierter kleiner Reste) */
+	sawKerfWaste: number;
+	/** Abschnitt: nutzbares Reststück nach optionalem Trim-Schnitt */
+	remainder: number;
+	/** Gesamtverlust = sawKerfWaste + remainder (nicht in Zuschnitten enthaltenes Material) */
 	waste: number;
 }
 
 export interface CuttingResult {
 	/** Alle verwendeten Rohdielen mit ihren Zuschnitten */
 	stockPlanks: StockPlank[];
-	/** Gesamter Verschnitt in mm */
+	/** Gesamter Sägeschnitt-Verschnitt in mm */
+	totalSawKerfWaste: number;
+	/** Gesamter Abschnitt in mm */
+	totalRemainder: number;
+	/** Gesamtverlust in mm (= totalSawKerfWaste + totalRemainder) */
 	totalWaste: number;
 	/** Zuschnitte, die nicht eingeplant werden konnten (zu lang für alle Standardlängen) */
 	unassigned: Cut[];
+}
+
+/**
+ * Splittet den Gesamtverschnitt einer Rohdiele in Sägeschnitt-Verschnitt und Abschnitt.
+ *
+ * Logik (gemäß Beispielen):
+ * - Zwischen N Stücken werden (N-1) Schnitte gemacht → baseKerf = (N-1)·sawKerf
+ * - rawRem = stockLength - Σlengths - baseKerf
+ * - rawRem == 0:                kerf = baseKerf,            remainder = 0
+ * - 0 < rawRem < sawKerf:       kerf = baseKerf + rawRem,   remainder = 0    (zu klein für Trim-Schnitt → absorbiert)
+ * - rawRem >= sawKerf:          kerf = baseKerf + sawKerf,  remainder = rawRem - sawKerf  (Trim-Schnitt vom Rest)
+ *
+ * Bei einem einzelnen Stück (N=1) gibt es keinen Zwischenschnitt; ein evtl. nötiger
+ * Trim-Schnitt wird wie oben behandelt.
+ */
+function splitWaste(
+	stockLength: number,
+	cuts: Cut[],
+	sawKerf: number
+): { sawKerfWaste: number; remainder: number } {
+	if (cuts.length === 0) return { sawKerfWaste: 0, remainder: stockLength };
+
+	const sumLengths = cuts.reduce((s, c) => s + c.length, 0);
+	const baseKerf = Math.max(0, cuts.length - 1) * sawKerf;
+	const rawRem = Math.max(0, stockLength - sumLengths - baseKerf);
+
+	if (rawRem === 0) return { sawKerfWaste: baseKerf, remainder: 0 };
+	if (rawRem < sawKerf) return { sawKerfWaste: baseKerf + rawRem, remainder: 0 };
+	return { sawKerfWaste: baseKerf + sawKerf, remainder: rawRem - sawKerf };
 }
 
 /**
@@ -74,29 +111,35 @@ function fillStockOptimal(
 		}
 	}
 
-	// Größtes erreichbares c finden
-	let bestC = 0;
+	// Finde die Kombination mit minimaler totalWaste (sawKerfWaste + remainder)
+	let bestTotalWaste = Infinity;
+	let bestSelectedIdx: number[] = [];
+
 	for (let c = capacity; c >= 0; c--) {
-		if (reachable[c]) {
-			bestC = c;
-			break;
+		if (!reachable[c]) continue;
+
+		// Rekonstruiere die gewählten Cuts für dieses c
+		const selectedIdx: number[] = [];
+		let tempC = c;
+		while (tempC > 0 && parent[tempC] !== -1) {
+			selectedIdx.push(parent[tempC]);
+			tempC = prevSum[tempC];
+		}
+
+		if (selectedIdx.length === 0) continue;
+
+		// Berechne den tatsächlichen totalWaste mit splitWaste
+		const selectedCuts = selectedIdx.map((i) => available[i]);
+		const { sawKerfWaste, remainder } = splitWaste(stockLength, selectedCuts, sawKerf);
+		const totalWaste = sawKerfWaste + remainder;
+
+		if (totalWaste < bestTotalWaste) {
+			bestTotalWaste = totalWaste;
+			bestSelectedIdx = selectedIdx;
 		}
 	}
 
-	// Backtrack: welche Cuts wurden gewählt
-	const selectedIdx: number[] = [];
-	let c = bestC;
-	while (c > 0 && parent[c] !== -1) {
-		selectedIdx.push(parent[c]);
-		c = prevSum[c];
-	}
-
-	// Tatsächlicher Verschnitt = stockLength - sum(lengths) - (N-1)*sawKerf
-	const sumLengths = selectedIdx.reduce((s, i) => s + available[i].length, 0);
-	const kerfTotal = Math.max(0, selectedIdx.length - 1) * sawKerf;
-	const waste = Math.max(0, stockLength - sumLengths - kerfTotal);
-
-	return { selectedIdx, waste };
+	return { selectedIdx: bestSelectedIdx, waste: bestTotalWaste };
 }
 
 /** Optionen für eine einzelne Bin-Wahl (Subset-Sum-Ergebnis) */
@@ -165,7 +208,13 @@ function runGreedy(
 	sawKerf: number,
 	selector: BinSelector
 ): CuttingResult {
-	const result: CuttingResult = { stockPlanks: [], totalWaste: 0, unassigned: [] };
+	const result: CuttingResult = {
+		stockPlanks: [],
+		totalSawKerfWaste: 0,
+		totalRemainder: 0,
+		totalWaste: 0,
+		unassigned: []
+	};
 	let remaining = [...cutsRemaining];
 
 	while (remaining.length > 0) {
@@ -187,12 +236,20 @@ function runGreedy(
 			.map((i) => remaining[i])
 			.sort((a, b) => b.length - a.length);
 
+		// Detaillierter Split: Sägeschnitt-Verschnitt vs. Abschnitt
+		const { sawKerfWaste, remainder } = splitWaste(chosen.stockLength, chosenCuts, sawKerf);
+		const totalForPlank = sawKerfWaste + remainder;
+
 		result.stockPlanks.push({
 			stockLength: chosen.stockLength,
 			cuts: chosenCuts,
-			waste: chosen.waste
+			sawKerfWaste,
+			remainder,
+			waste: totalForPlank
 		});
-		result.totalWaste += chosen.waste;
+		result.totalSawKerfWaste += sawKerfWaste;
+		result.totalRemainder += remainder;
+		result.totalWaste += totalForPlank;
 
 		remaining = remaining.filter((_, i) => !chosenSet.has(i));
 	}
@@ -247,7 +304,13 @@ export function optimizeCutting(
 	sawKerf: number,
 	cuttable: boolean = true
 ): CuttingResult {
-	const empty: CuttingResult = { stockPlanks: [], totalWaste: 0, unassigned: [] };
+	const empty: CuttingResult = {
+		stockPlanks: [],
+		totalSawKerfWaste: 0,
+		totalRemainder: 0,
+		totalWaste: 0,
+		unassigned: []
+	};
 
 	if (cuts.length === 0 || stockLengths.length === 0) return empty;
 
@@ -265,6 +328,8 @@ export function optimizeCutting(
 	if (!cuttable) {
 		const result: CuttingResult = {
 			stockPlanks: [],
+			totalSawKerfWaste: 0,
+			totalRemainder: 0,
 			totalWaste: 0,
 			unassigned: [...baseUnassigned]
 		};
@@ -275,9 +340,17 @@ export function optimizeCutting(
 				result.unassigned.push(cut);
 				continue;
 			}
-			const waste = Math.max(0, stockToUse - cut.length);
-			result.stockPlanks.push({ stockLength: stockToUse, cuts: [cut], waste });
-			result.totalWaste += waste;
+			// Bei nicht-zuschneidbar: kein Sägeschnitt, nur Abschnitt
+			const remainder = Math.max(0, stockToUse - cut.length);
+			result.stockPlanks.push({
+				stockLength: stockToUse,
+				cuts: [cut],
+				sawKerfWaste: 0,
+				remainder,
+				waste: remainder
+			});
+			result.totalRemainder += remainder;
+			result.totalWaste += remainder;
 		}
 		return result;
 	}
