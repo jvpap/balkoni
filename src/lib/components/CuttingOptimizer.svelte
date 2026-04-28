@@ -154,7 +154,9 @@
 			</ul>
 			<p class="my-1.5 text-sm text-gray-700">
 				Gesamtverschnitt: <strong>{Math.round(result.totalWaste)} mm</strong>
-				(Säge: {Math.round(result.totalSawKerfWaste)} mm, Abschnitt: {Math.round(result.totalRemainder)} mm)
+				(Säge: {Math.round(result.totalSawKerfWaste)} mm, Abschnitt: {Math.round(
+					result.totalRemainder
+				)} mm)
 			</p>
 
 			{#if result.unassigned.length > 0}

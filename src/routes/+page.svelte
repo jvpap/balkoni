@@ -24,7 +24,9 @@
 	<title>Balkon-Dielen-Planer</title>
 </svelte:head>
 
-<main class="flex flex-col lg:flex-row gap-3 p-3 lg:p-5 font-sans min-h-screen lg:h-screen overflow-auto lg:overflow-hidden">
+<main
+	class="flex flex-col lg:flex-row gap-3 p-3 lg:p-5 font-sans min-h-screen lg:h-screen overflow-auto lg:overflow-hidden"
+>
 	<!-- Mobile: Always open sidebar, Desktop: collapsible with fixed width -->
 	<aside
 		class="flex-shrink-0 flex flex-col gap-3 w-full h-auto lg:h-full transition-all duration-200 ease-in-out"
