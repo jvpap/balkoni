@@ -24,43 +24,49 @@
 	<title>Balkon-Dielen-Planer</title>
 </svelte:head>
 
-<main class="flex gap-3 p-5 font-sans h-screen overflow-hidden">
+<main class="flex flex-col lg:flex-row gap-3 p-3 lg:p-5 font-sans min-h-screen lg:h-screen overflow-auto lg:overflow-hidden">
+	<!-- Mobile: Always open sidebar, Desktop: collapsible with fixed width -->
 	<aside
-		class="flex-shrink-0 flex flex-col gap-3 h-full transition-[width] duration-200 ease-in-out"
-		class:w-[340px]={!sidebarCollapsed}
-		class:w-10={sidebarCollapsed}
+		class="flex-shrink-0 flex flex-col gap-3 w-full h-auto lg:h-full transition-all duration-200 ease-in-out"
+		class:lg:w-[340px]={!sidebarCollapsed}
+		class:lg:w-10={sidebarCollapsed}
 	>
 		<div class="flex gap-2 items-center">
-			{#if !sidebarCollapsed}
-				<button
-					type="button"
-					on:click={startDrawing}
-					class="flex-shrink-0 px-2 py-1 bg-red-300 hover:bg-red-700 text-white text-xs rounded transition-colors cursor-pointer"
-				>
-					Löschen + Eckpunkte editieren
-				</button>
-				<button
-					type="button"
-					on:click={finishDrawing}
-					disabled={!$planStore.isDrawingPolygon}
-					class="flex-shrink-0 px-2 py-1 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white text-xs rounded transition-colors cursor-pointer"
-				>
-					Fertig
-				</button>
-			{/if}
+			<button
+				type="button"
+				on:click={startDrawing}
+				class="flex-shrink-0 px-3 py-2 bg-red-300 hover:bg-red-700 text-white text-sm lg:text-xs rounded transition-colors cursor-pointer"
+			>
+				Löschen + Eckpunkte editieren
+			</button>
+			<button
+				type="button"
+				on:click={finishDrawing}
+				disabled={!$planStore.isDrawingPolygon}
+				class="flex-shrink-0 px-3 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white text-sm lg:text-xs rounded transition-colors cursor-pointer"
+			>
+				Fertig
+			</button>
+			<!-- Collapse button only on desktop -->
 			<button
 				type="button"
 				on:click={() => (sidebarCollapsed = !sidebarCollapsed)}
 				title={sidebarCollapsed ? 'Eingabe einblenden' : 'Eingabe ausblenden'}
 				aria-label={sidebarCollapsed ? 'Eingabe einblenden' : 'Eingabe ausblenden'}
-				class="ml-auto flex-shrink-0 w-10 h-10 flex items-center justify-center rounded border border-gray-300 bg-white hover:bg-gray-100 text-gray-600 cursor-pointer"
+				class="hidden lg:flex ml-auto flex-shrink-0 w-10 h-10 items-center justify-center rounded border border-gray-300 bg-white hover:bg-gray-100 text-gray-600 cursor-pointer"
 			>
 				{sidebarCollapsed ? '›' : '‹'}
 			</button>
 		</div>
 
+		<div class="flex-1 min-h-0 overflow-y-auto flex flex-col gap-4 lg:hidden">
+			<CanvasSizeSettings />
+			<MousePosition />
+			<PointList />
+		</div>
+
 		{#if !sidebarCollapsed}
-			<div class="flex-1 min-h-0 overflow-y-auto flex flex-col gap-4">
+			<div class="flex-1 min-h-0 overflow-y-auto flex flex-col gap-4 hidden lg:flex">
 				<CanvasSizeSettings />
 				<MousePosition />
 				<PointList />
@@ -68,19 +74,21 @@
 		{/if}
 	</aside>
 
-	<div class="flex-shrink-0 h-full overflow-auto flex justify-center items-start">
+	<!-- Canvas: Full width on mobile, fixed on desktop -->
+	<div class="flex-shrink-0 lg:h-full overflow-auto flex justify-center items-start">
 		<Canvas bind:stage={canvasStage} />
 	</div>
 
-	<div class="flex-1 min-w-0 h-full overflow-x-auto">
-		<div class="flex gap-3 h-full min-w-max">
-			<div class="w-[340px] flex-shrink-0 h-full overflow-y-auto">
+	<!-- Right panels: Stacked on mobile, horizontal on desktop -->
+	<div class="flex-1 min-w-0 lg:h-full overflow-x-auto">
+		<div class="flex flex-col lg:flex-row gap-3 h-full min-w-max">
+			<div class="w-full lg:w-[340px] flex-shrink-0 lg:h-full overflow-y-auto">
 				<PlankSettings />
 			</div>
-			<div class="w-[340px] flex-shrink-0 h-full overflow-y-auto">
+			<div class="w-full lg:w-[340px] flex-shrink-0 lg:h-full overflow-y-auto">
 				<Statistics />
 			</div>
-			<div class="w-[400px] flex-shrink-0 h-full overflow-y-auto">
+			<div class="w-full lg:w-[400px] flex-shrink-0 lg:h-full overflow-y-auto">
 				<CuttingOptimizer />
 			</div>
 		</div>

@@ -19,7 +19,7 @@
 				type="number"
 				bind:value={canvasWidthMM}
 				min="1000"
-				max="10000"
+				max="20000"
 				on:change={updateCanvasSize}
 				on:blur={updateCanvasSize}
 				class="w-[90px] px-2 py-1.5 border border-slate-300 rounded text-[13px] font-mono focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
@@ -34,7 +34,7 @@
 				type="number"
 				bind:value={canvasHeightMM}
 				min="1000"
-				max="10000"
+				max="20000"
 				on:change={updateCanvasSize}
 				on:blur={updateCanvasSize}
 				class="w-[90px] px-2 py-1.5 border border-slate-300 rounded text-[13px] font-mono focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
