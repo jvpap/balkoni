@@ -4,6 +4,9 @@ import { calculatePolygonArea } from '$lib/utils/geometry';
 
 const STORAGE_KEY = 'balkon-planer-data';
 
+// Callback für ILP-Optimierung
+let onPlanksGenerated: (() => void) | null = null;
+
 function loadFromStorage(): Partial<PlanState> | null {
 	if (typeof window === 'undefined') return null;
 	try {
@@ -42,7 +45,8 @@ function createPlanStore() {
 		generatedPlanks: saved?.generatedPlanks ?? [],
 		selectedPlankIndex: -1,
 		sawKerf: saved?.sawKerf ?? 3, // Standard-Sägeschnitt 3 mm
-		cuttable: saved?.cuttable ?? true
+		cuttable: saved?.cuttable ?? true,
+		globalOptimization: saved?.globalOptimization ?? false
 	});
 
 	/** update + automatisch persistieren */
@@ -106,13 +110,14 @@ function createPlanStore() {
 		setSawKerf: (kerf: number) => persist(() => ({ sawKerf: kerf })),
 		setPlankLengths: (lengths: number[]) => persist(() => ({ plankLengths: lengths })),
 		setCuttable: (cuttable: boolean) => persist(() => ({ cuttable })),
+		setGlobalOptimization: (globalOptimization: boolean) => persist(() => ({ globalOptimization })),
 
 		// Berechnungsergebnisse
 		setPlanks: (planks: PlanState['placedPlanks'], waste: number, area: number) =>
 			persist(() => ({ placedPlanks: planks, totalWaste: waste, totalPlankArea: area })),
 
 		// Generierte Dielen (für Verlege-Modus) - speichert auch aktuelle Breite explizit
-		generatePlanks: (planks: PlanState['generatedPlanks'], width?: number) =>
+		generatePlanks: (planks: PlanState['generatedPlanks'], width?: number) => {
 			persist((s) => ({
 				generatedPlanks: planks,
 				selectedPlankIndex: -1,
@@ -120,7 +125,15 @@ function createPlanStore() {
 				placedPlanks: [], // Alte berechnete Dielen löschen (blaue Linien entfernen)
 				totalWaste: 0,
 				totalPlankArea: 0
-			})),
+			}));
+			// Callback aufrufen, wenn Dielen generiert wurden
+			if (onPlanksGenerated) {
+				onPlanksGenerated();
+			}
+		},
+		setOnPlanksGenerated: (callback: (() => void) | null) => {
+			onPlanksGenerated = callback;
+		},
 		selectPlank: (index: number) => update((s) => ({ ...s, selectedPlankIndex: index })),
 
 		// Maus-Tracking (nur temporär, nicht persistiert)

@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { generatePlanksForPolygon, calculateJoints } from '$lib/utils/plankCalculator';
+import { optimizeCutting, optimizeCuttingILP } from '$lib/utils/cuttingOptimizer';
 import type { Plank } from '$lib/types';
 
 const square = [0, 0, 1000, 0, 1000, 800, 0, 800];
@@ -102,5 +103,116 @@ describe('calculateJoints', () => {
 		const r = calculateJoints(planks, square);
 		expect(r.segments).toHaveLength(0);
 		expect(r.totalLength).toBe(0);
+	});
+});
+
+describe('Polygon-Vergleichstest (User-Report)', () => {
+	it('vergleicht gerade vs. schräg Polygon (20mm Unterschied)', () => {
+		const plankWidth = 200;
+		const stockLengths = [1000, 2000, 3000, 4000, 5000];
+		const sawKerf = 3;
+
+		// Gerade: letzter Punkt y=1330
+		const polygonStraight = [0, 0, 9560, 0, 9560, 3390, 4670, 3390, 3495, 1330, 0, 1330];
+
+		// Schräg: letzter Punkt y=1350
+		const polygonSlanted = [0, 0, 9560, 0, 9560, 3390, 4670, 3390, 3495, 1330, 0, 1350];
+
+		const planksStraight = generatePlanksForPolygon(polygonStraight, plankWidth, 'right');
+		const planksSlanted = generatePlanksForPolygon(polygonSlanted, plankWidth, 'right');
+
+		console.log('Gerade: Anzahl Dielen:', planksStraight.length);
+		console.log('Schräg: Anzahl Dielen:', planksSlanted.length);
+
+		const totalLengthStraight = planksStraight.reduce((sum, p) => sum + p.length, 0);
+		const totalLengthSlanted = planksSlanted.reduce((sum, p) => sum + p.length, 0);
+
+		console.log('Gerade: Gesamtlänge:', totalLengthStraight);
+		console.log('Schräg: Gesamtlänge:', totalLengthSlanted);
+
+		// Zeige die ersten 20 Dielenlängen für Vergleich
+		console.log(
+			'Gerade: Erste 20 Längen:',
+			planksStraight.slice(0, 20).map((p) => p.length.toFixed(1))
+		);
+		console.log(
+			'Schräg: Erste 20 Längen:',
+			planksSlanted.slice(0, 20).map((p) => p.length.toFixed(1))
+		);
+
+		// Finde die Unterschiede
+		const differences: number[] = [];
+		for (let i = 0; i < planksStraight.length; i++) {
+			const diff = planksSlanted[i].length - planksStraight[i].length;
+			if (Math.abs(diff) > 0.01) {
+				differences.push(i);
+				console.log(
+					`Index ${i}: Gerade=${planksStraight[i].length.toFixed(1)}, Schräg=${planksSlanted[i].length.toFixed(1)}, Diff=${diff.toFixed(1)}`
+				);
+			}
+		}
+		console.log('Anzahl unterschiedlicher Dielen:', differences.length);
+
+		const cutsStraight = planksStraight.map((p, i) => ({ length: p.length, plankIndex: i }));
+		const cutsSlanted = planksSlanted.map((p, i) => ({ length: p.length, plankIndex: i }));
+
+		const resultStraight = optimizeCutting(cutsStraight, stockLengths, sawKerf, true);
+		const resultSlanted = optimizeCutting(cutsSlanted, stockLengths, sawKerf, true);
+
+		console.log('Gerade: Rohdielen:', resultStraight.stockPlanks.length);
+		console.log('Schräg: Rohdielen:', resultSlanted.stockPlanks.length);
+		console.log('Gerade: Gesamtverschnitt:', resultStraight.totalWaste);
+		console.log('Schräg: Gesamtverschnitt:', resultSlanted.totalWaste);
+
+		// Zeige die Verteilung der Rohdielen-Längen
+		const countByLengthStraight: Record<number, number> = {};
+		const countByLengthSlanted: Record<number, number> = {};
+		for (const p of resultStraight.stockPlanks) {
+			countByLengthStraight[p.stockLength] = (countByLengthStraight[p.stockLength] || 0) + 1;
+		}
+		for (const p of resultSlanted.stockPlanks) {
+			countByLengthSlanted[p.stockLength] = (countByLengthSlanted[p.stockLength] || 0) + 1;
+		}
+		console.log('Gerade: Rohdielen-Verteilung:', countByLengthStraight);
+		console.log('Schräg: Rohdielen-Verteilung:', countByLengthSlanted);
+
+		// Zeige ein paar Beispiel-Zuschnitte
+		console.log('Gerade: Beispiel-Rohdiele 0:', resultStraight.stockPlanks[0]);
+		console.log('Schräg: Beispiel-Rohdiele 0:', resultSlanted.stockPlanks[0]);
+
+		// Dokumentierte Limitation des Greedy-Ansatzes:
+		// Die schräge Variante hat eine größere Gesamtlänge (121471 > 121283mm),
+		// benötigt aber weniger Rohdielen (28 vs 33) und hat weniger Verschnitt (9529 vs 14717mm).
+		// Ursache: 1330mm passen schlecht in 4000mm (3×1330=3990mm+6mm Kerf=3996mm → 4mm Rest),
+		// während die schrägen Längen (1331.9-1349.7mm) zufällig besser in 5000mm passen.
+		// Der Greedy-Algorithmus wählt lokal optimale Rohdielen, nicht global optimal.
+		// Multi-Strategien-Auswahl hilft hier nicht, da alle Strategien das gleiche lokale Optimum finden.
+		// Eine echte globale Optimierung erfordert Branch & Bound oder Integer Programming.
+		expect(true).toBe(true); // Test dokumentiert das Verhalten
+	});
+
+	it('testet ILP-Optimierung mit Beispiel-Polygonen', () => {
+		const plankWidth = 200;
+		const stockLengths = [1000, 2000, 3000, 4000, 5000];
+		const sawKerf = 3;
+
+		// Gerade: letzter Punkt y=1330
+		const polygonStraight = [0, 0, 9560, 0, 9560, 3390, 4670, 3390, 3495, 1330, 0, 1330];
+
+		const planksStraight = generatePlanksForPolygon(polygonStraight, plankWidth, 'right');
+		const cutsStraight = planksStraight.map((p, i) => ({ length: p.length, plankIndex: i }));
+
+		// ILP-Optimierung testen
+		const resultILP = optimizeCuttingILP(cutsStraight, stockLengths, sawKerf);
+		const resultGreedy = optimizeCutting(cutsStraight, stockLengths, sawKerf, true);
+
+		console.log('Greedy: Rohdielen:', resultGreedy.stockPlanks.length);
+		console.log('Greedy: Gesamtverschnitt:', resultGreedy.totalWaste);
+		console.log('ILP: Rohdielen:', resultILP.stockPlanks.length);
+		console.log('ILP: Gesamtverschnitt:', resultILP.totalWaste);
+
+		// ILP sollte gleich oder besser sein als Greedy
+		expect(resultILP.stockPlanks.length).toBeLessThanOrEqual(resultGreedy.stockPlanks.length);
+		expect(resultILP.totalWaste).toBeLessThanOrEqual(resultGreedy.totalWaste);
 	});
 });

@@ -2,13 +2,26 @@
 	import { planStore } from '$lib/stores/planStore';
 	import {
 		optimizeCutting,
+		optimizeCuttingILP,
 		parseLengthsInput,
 		formatLengthsInput,
 		type Cut
 	} from '$lib/utils/cuttingOptimizer';
 
+	// Loading state for global optimization
+	let isLoading = false;
+	let ilpResult: ReturnType<typeof optimizeCutting> | null = null;
+	let ilpTimeout: ReturnType<typeof setTimeout> | null = null; // Debounce timeout
+
 	// Editierbarer Text für Standardlängen (kommasepariert)
 	let lengthsInput = formatLengthsInput($planStore.plankLengths);
+
+	// Setze Callback für ILP-Optimierung, wenn Dielen generiert werden
+	planStore.setOnPlanksGenerated(() => {
+		if ($planStore.cuttable && $planStore.globalOptimization) {
+			runILPOptimization();
+		}
+	});
 
 	// Bei Änderungen im Store (z.B. anderer Tab) den Input aktualisieren
 	$: if ($planStore.plankLengths && lengthsInput === '') {
@@ -26,14 +39,53 @@
 		planStore.setSawKerf(isNaN(val) ? 0 : val);
 	}
 
+	function runILPOptimization() {
+		if (!$planStore.cuttable || !$planStore.globalOptimization) return;
+
+		// Clear previous timeout
+		if (ilpTimeout) {
+			clearTimeout(ilpTimeout);
+		}
+
+		isLoading = true;
+		ilpResult = null;
+
+		// Debounce: 500ms delay
+		ilpTimeout = setTimeout(() => {
+			const cuts: Cut[] = $planStore.generatedPlanks.map((plank, i) => ({
+				plankIndex: i,
+				length: plank.length
+			}));
+			ilpResult = optimizeCuttingILP(cuts, $planStore.plankLengths, $planStore.sawKerf);
+			console.table({
+				ILP: {
+					Rohdielen: ilpResult.stockPlanks.length,
+					Gesamtverschnitt: Math.round(ilpResult.totalWaste),
+					Sägeverschnitt: Math.round(ilpResult.totalSawKerfWaste),
+					Abschnitt: Math.round(ilpResult.totalRemainder)
+				},
+				Greedy: {
+					Rohdielen: greedyResult.stockPlanks.length,
+					Gesamtverschnitt: Math.round(greedyResult.totalWaste),
+					Sägeverschnitt: Math.round(greedyResult.totalSawKerfWaste),
+					Abschnitt: Math.round(greedyResult.totalRemainder)
+				}
+			});
+			isLoading = false;
+		}, 500);
+	}
+
 	// Automatisch neu berechnen bei Änderungen an Zuschnitten oder Parametern
-	$: result = (() => {
+	$: greedyResult = (() => {
 		const cuts: Cut[] = $planStore.generatedPlanks.map((plank, i) => ({
 			plankIndex: i,
 			length: plank.length
 		}));
 		return optimizeCutting(cuts, $planStore.plankLengths, $planStore.sawKerf, $planStore.cuttable);
 	})();
+
+	// Verwende ILP-Ergebnis wenn verfügbar, sonst Greedy
+	$: result = ilpResult ?? greedyResult;
 
 	// Gruppierung nach Rohdielen-Länge für Bestell-Zusammenfassung
 	$: orderSummary = (() => {
@@ -45,6 +97,12 @@
 		return [...counts.entries()]
 			.map(([stockLength, count]) => ({ stockLength, count }))
 			.sort((a, b) => b.stockLength - a.stockLength);
+	})();
+
+	// Berechne die Summe der zu bestellenden Länge
+	$: totalOrderLength = (() => {
+		if (!result) return 0;
+		return result.stockPlanks.reduce((sum, plank) => sum + plank.stockLength, 0);
 	})();
 
 	// Gruppierung nach identischem Schnittmuster (gleiche Rohdielen-Länge + gleiche Zuschnitt-Längen)
@@ -126,6 +184,31 @@
 
 	{#if $planStore.cuttable}
 		<div class="my-3">
+			<label class="flex items-center gap-2 text-sm cursor-pointer">
+				<input
+					type="checkbox"
+					checked={$planStore.globalOptimization}
+					on:change={(e) => {
+						planStore.setGlobalOptimization((e.target as HTMLInputElement).checked);
+						if ((e.target as HTMLInputElement).checked) {
+							runILPOptimization();
+						} else {
+							ilpResult = null;
+							if (ilpTimeout) {
+								clearTimeout(ilpTimeout);
+								ilpTimeout = null;
+							}
+						}
+					}}
+					class="cursor-pointer"
+				/>
+				Globale Optimierung (langsam, aber optimal)
+			</label>
+		</div>
+	{/if}
+
+	{#if $planStore.cuttable}
+		<div class="my-3">
 			<label for="saw-kerf" class="flex items-center gap-2.5 text-sm">
 				Sägeschnitt-Breite (mm):
 				<input
@@ -142,7 +225,14 @@
 		</div>
 	{/if}
 
-	{#if result && result.stockPlanks.length > 0}
+	{#if isLoading}
+		<div
+			class="mt-4 p-3 bg-yellow-50 rounded-md border border-yellow-200 flex-1 min-h-0 flex flex-col items-center justify-center"
+		>
+			<div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+			<p class="mt-2 text-sm text-gray-700">Globale Optimierung läuft...</p>
+		</div>
+	{:else if result && result.stockPlanks.length > 0}
 		<div class="mt-4 p-3 bg-blue-50 rounded-md border border-blue-200 flex-1 min-h-0 flex flex-col">
 			<p class="my-1.5 text-sm font-semibold text-gray-700">
 				Bestellung ({result.stockPlanks.length} Rohdielen):
@@ -152,6 +242,9 @@
 					<li><strong>{item.count}×</strong> {item.stockLength} mm</li>
 				{/each}
 			</ul>
+			<p class="my-1.5 text-sm text-gray-700">
+				<strong>Σ {totalOrderLength} mm</strong>
+			</p>
 			<p class="my-1.5 text-sm text-gray-700">
 				Gesamtverschnitt: <strong>{Math.round(result.totalWaste)} mm</strong>
 				(Säge: {Math.round(result.totalSawKerfWaste)} mm, Abschnitt: {Math.round(

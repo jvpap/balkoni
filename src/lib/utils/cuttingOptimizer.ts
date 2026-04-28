@@ -6,6 +6,8 @@
  * mit minimalem Verschnitt herzustellen.
  */
 
+import lpSolver from 'javascript-lp-solver';
+
 export interface Cut {
 	/** Index der Diele in generatedPlanks (für Referenz/Anzeige) */
 	plankIndex: number;
@@ -259,11 +261,10 @@ function runGreedy(
 
 /** Vergleicht zwei Ergebnisse: weniger Verschnitt, dann weniger Rohdielen, dann weniger Unzugeordnete */
 function isBetter(a: CuttingResult, b: CuttingResult): boolean {
-	if (a.unassigned.length !== b.unassigned.length) {
-		return a.unassigned.length < b.unassigned.length;
-	}
 	if (a.totalWaste !== b.totalWaste) return a.totalWaste < b.totalWaste;
-	return a.stockPlanks.length < b.stockPlanks.length;
+	if (a.stockPlanks.length !== b.stockPlanks.length)
+		return a.stockPlanks.length < b.stockPlanks.length;
+	return a.unassigned.length < b.unassigned.length;
 }
 
 /** Mische Array (Fisher-Yates), nutzt deterministische PRNG für reproduzierbare Ergebnisse */
@@ -406,4 +407,198 @@ export function parseLengthsInput(input: string): number[] {
  */
 export function formatLengthsInput(lengths: number[]): string {
 	return lengths.join(', ');
+}
+
+/**
+ * Typ-Definition für ILP-Modell (javascript-lp-solver)
+ */
+interface LPSolverModel {
+	optimize: string;
+	opType: 'min' | 'max';
+	constraints: Record<
+		string,
+		{ min?: number; max?: number; equal?: number } | Record<string, number>
+	>;
+	variables: Record<string, Record<string, number>>;
+}
+
+interface LPSolverResult {
+	feasible: boolean;
+	[result: string]: number | boolean;
+}
+
+/**
+ * ILP-basierte globale Optimierung (Pattern-basiert).
+ *
+ * Generiert alle möglichen Patterns (Kombinationen von Cuts, die in eine Rohdiele passen)
+ * und löst ein Integer Linear Programming Problem, um die optimale Kombination zu finden.
+ *
+ * Dies ist deutlich langsamer als der Greedy-Ansatz, liefert aber globale Optimalität.
+ */
+export function optimizeCuttingILP(
+	cuts: Cut[],
+	stockLengths: number[],
+	sawKerf: number
+): CuttingResult {
+	const empty: CuttingResult = {
+		stockPlanks: [],
+		totalSawKerfWaste: 0,
+		totalRemainder: 0,
+		totalWaste: 0,
+		unassigned: []
+	};
+
+	if (cuts.length === 0 || stockLengths.length === 0) return empty;
+
+	const maxStock = Math.max(...stockLengths);
+
+	// Zuschnitte, die in keine Standardlänge passen, vorab als unassigned markieren
+	const baseUnassigned: Cut[] = [];
+	const fittable: Cut[] = [];
+	for (const cut of cuts) {
+		if (cut.length > maxStock) baseUnassigned.push(cut);
+		else fittable.push(cut);
+	}
+
+	if (fittable.length === 0) {
+		return { ...empty, unassigned: baseUnassigned };
+	}
+
+	// Generiere alle möglichen Patterns für jede Rohdiele-Länge
+	const patterns: Array<{
+		stockLength: number;
+		cutIndices: number[];
+		waste: number;
+	}> = [];
+
+	for (const stockLength of stockLengths) {
+		// Generiere alle Subset-Kombinationen von fittable, die in stockLength passen
+		// Begrenzung auf max 6 Cuts pro Pattern um die Kombinationsexplosion zu begrenzen
+		const generatePatterns = (startIdx: number, current: number[], currentSum: number) => {
+			// Pattern hinzufügen wenn nicht leer
+			if (current.length > 0) {
+				const kerfTotal = Math.max(0, current.length - 1) * sawKerf;
+				const rawWaste = stockLength - currentSum - kerfTotal;
+				if (rawWaste >= 0) {
+					const { sawKerfWaste, remainder } = splitWaste(
+						stockLength,
+						current.map((i) => fittable[i]),
+						sawKerf
+					);
+					patterns.push({
+						stockLength,
+						cutIndices: [...current],
+						waste: sawKerfWaste + remainder
+					});
+				}
+			}
+
+			// Rekursiv weitere Cuts hinzufügen (max 6)
+			if (current.length >= 6) return;
+
+			for (let i = startIdx; i < fittable.length; i++) {
+				const cut = fittable[i];
+				const kerfForNext = current.length > 0 ? sawKerf : 0;
+				const newSum = currentSum + cut.length + kerfForNext;
+				if (newSum > stockLength) continue;
+
+				generatePatterns(i + 1, [...current, i], newSum);
+			}
+		};
+
+		generatePatterns(0, [], 0);
+	}
+
+	if (patterns.length === 0) {
+		return { ...empty, unassigned: [...baseUnassigned, ...fittable] };
+	}
+
+	// ILP-Formulierung
+	const model: LPSolverModel = {
+		optimize: 'totalWaste',
+		opType: 'min',
+		constraints: {},
+		variables: {}
+	};
+
+	// Variablen: x[p] = Anzahl der Rohdielen mit Pattern p (integer, >= 0)
+	for (let i = 0; i < patterns.length; i++) {
+		model.variables[`x_${i}`] = {
+			totalWaste: patterns[i].waste
+		};
+		model.constraints[`x_${i}`] = { min: 0 };
+	}
+
+	// Constraint: Jeder Cut muss mindestens einmal zugewiesen werden
+	for (let i = 0; i < fittable.length; i++) {
+		const constraint: Record<string, number> = { min: 1 };
+		for (let p = 0; p < patterns.length; p++) {
+			if (patterns[p].cutIndices.includes(i)) {
+				constraint[`x_${p}`] = 1;
+			}
+		}
+		model.constraints[`cut_${i}`] = constraint;
+	}
+
+	// Lösen
+	const results: LPSolverResult = lpSolver.Solve(model) as LPSolverResult;
+
+	if (!results.feasible) {
+		// Fallback auf Greedy wenn ILP nicht lösbar
+		return optimizeCutting(cuts, stockLengths, sawKerf, true);
+	}
+
+	// Rekonstruiere das Ergebnis aus den Pattern-Variablen
+	const result: CuttingResult = {
+		stockPlanks: [],
+		totalSawKerfWaste: 0,
+		totalRemainder: 0,
+		totalWaste: 0,
+		unassigned: [...baseUnassigned]
+	};
+
+	// Track welche Cuts bereits zugewiesen wurden
+	const assignedCuts = new Set<number>();
+
+	for (let p = 0; p < patterns.length; p++) {
+		const count = results[`x_${p}`] as number;
+		if (count <= 0) continue;
+
+		for (let i = 0; i < count; i++) {
+			const pattern = patterns[p];
+			const patternCuts = pattern.cutIndices
+				.filter((idx) => !assignedCuts.has(idx))
+				.map((idx) => fittable[idx]);
+
+			if (patternCuts.length === 0) break;
+
+			const { sawKerfWaste, remainder } = splitWaste(pattern.stockLength, patternCuts, sawKerf);
+			const totalForPlank = sawKerfWaste + remainder;
+
+			result.stockPlanks.push({
+				stockLength: pattern.stockLength,
+				cuts: patternCuts,
+				sawKerfWaste,
+				remainder,
+				waste: totalForPlank
+			});
+			result.totalSawKerfWaste += sawKerfWaste;
+			result.totalRemainder += remainder;
+			result.totalWaste += totalForPlank;
+
+			// Markiere Cuts als zugewiesen
+			for (const cut of patternCuts) {
+				assignedCuts.add(cut.plankIndex);
+			}
+		}
+	}
+
+	// Nicht zugewiesene Cuts als unassigned markieren
+	for (let i = 0; i < fittable.length; i++) {
+		if (!assignedCuts.has(fittable[i].plankIndex)) {
+			result.unassigned.push(fittable[i]);
+		}
+	}
+
+	return result;
 }

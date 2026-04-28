@@ -24,6 +24,7 @@ export interface PlanState {
 	selectedPlankIndex: number;
 	sawKerf: number; // Sägeschnitt-Breite in mm
 	cuttable: boolean; // Dielen dürfen zugeschnitten werden
+	globalOptimization: boolean; // ILP-basierte globale Optimierung verwenden
 }
 
 export const CONSTANTS = {
