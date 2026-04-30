@@ -51,7 +51,7 @@
 		{#if $planStore.crossBeams.length === 0}
 			<p class="text-slate-400 italic text-xs m-0">Noch keine Querbalken definiert</p>
 		{:else}
-			<div class="flex flex-col gap-2 max-h-[300px]">
+			<div class="flex flex-col gap-2">
 				{#each $planStore.crossBeams as beam, i}
 					<div
 						role="button"
