@@ -46,7 +46,11 @@ function createPlanStore() {
 		selectedPlankIndex: -1,
 		sawKerf: saved?.sawKerf ?? 3, // Standard-Sägeschnitt 3 mm
 		cuttable: saved?.cuttable ?? true,
-		globalOptimization: saved?.globalOptimization ?? false
+		globalOptimization: saved?.globalOptimization ?? false,
+		crossBeams: saved?.crossBeams ?? [],
+		selectedCrossBeamIndex: -1,
+		withFloorClaws: saved?.withFloorClaws ?? false,
+		withJointBand: saved?.withJointBand ?? true
 	});
 
 	/** update + automatisch persistieren */
@@ -161,7 +165,28 @@ function createPlanStore() {
 					newSelected = s.selectedPointIndex - 1; // Index korrigieren wenn vorher gelöscht
 				}
 				return { polygonPoints: newPoints, selectedPointIndex: newSelected };
-			})
+			}),
+
+		// Querbalken
+		addCrossBeam: (y: number, width: number) =>
+			persist((s) => ({
+				crossBeams: [...s.crossBeams, { y, width }]
+			})),
+		updateCrossBeam: (index: number, y: number, width: number) =>
+			persist((s) => {
+				const newCrossBeams = [...s.crossBeams];
+				newCrossBeams[index] = { y, width };
+				return { crossBeams: newCrossBeams };
+			}),
+		removeCrossBeam: (index: number) =>
+			persist((s) => ({
+				crossBeams: s.crossBeams.filter((_, i) => i !== index),
+				selectedCrossBeamIndex: -1
+			})),
+		setCrossBeams: (crossBeams: PlanState['crossBeams']) => persist(() => ({ crossBeams })),
+		selectCrossBeam: (index: number) => persist(() => ({ selectedCrossBeamIndex: index })),
+		toggleFloorClaws: () => persist((s) => ({ withFloorClaws: !s.withFloorClaws })),
+		toggleJointBand: () => persist((s) => ({ withJointBand: !s.withJointBand }))
 	};
 }
 

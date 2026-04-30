@@ -8,6 +8,11 @@ export interface Plank {
 	waste: number;
 }
 
+export interface CrossBeam {
+	y: number; // Y-Koordinate (Startposition)
+	width: number; // Breite in mm
+}
+
 export interface PlanState {
 	polygonPoints: number[];
 	isDrawingPolygon: boolean;
@@ -25,6 +30,10 @@ export interface PlanState {
 	sawKerf: number; // Sägeschnitt-Breite in mm
 	cuttable: boolean; // Dielen dürfen zugeschnitten werden
 	globalOptimization: boolean; // ILP-basierte globale Optimierung verwenden
+	crossBeams: CrossBeam[]; // Querbalken mit Y-Koordinate und Breite
+	selectedCrossBeamIndex: number; // Index des ausgewählten Querbalkens
+	withFloorClaws: boolean; // Bodenkrallen verwenden
+	withJointBand: boolean; // Fugenband verwenden
 }
 
 export const CONSTANTS = {

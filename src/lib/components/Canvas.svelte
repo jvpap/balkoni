@@ -17,6 +17,8 @@
 	let crosshairLayer: KonvaType.Layer;
 	let polygonLayer: KonvaType.Layer;
 	let plankLayer: KonvaType.Layer;
+	let crossBeamLayer: KonvaType.Layer;
+	let floorClawLayer: KonvaType.Layer;
 	let Konva: typeof import('konva').default;
 
 	// Aktuelle Pixel-Größe des Canvas (vom User per Drag-Handle veränderbar)
@@ -54,6 +56,36 @@
 		renderer.drawPolygon(Konva, polygonLayer, pixelPoints, state.selectedPointIndex);
 		renderer.drawPlanks(Konva, plankLayer, state.placedPlanks, conv);
 
+		// Querbalken zeichnen
+		if (crossBeamLayer) {
+			renderer.drawCrossBeams(
+				Konva,
+				crossBeamLayer,
+				state.crossBeams,
+				state.polygonPoints,
+				conv,
+				state.selectedCrossBeamIndex
+			);
+		}
+
+		// Bodenkrallen zeichnen
+		if (floorClawLayer) {
+			if (state.withFloorClaws && state.generatedPlanks.length > 0) {
+				renderer.drawFloorClaws(
+					Konva,
+					floorClawLayer,
+					state.generatedPlanks,
+					state.crossBeams,
+					state.polygonPoints,
+					state.plankWidth,
+					state.startFrom,
+					conv
+				);
+			} else {
+				floorClawLayer.destroyChildren();
+			}
+		}
+
 		// Generierte Dielen zeichnen (semi-transparent über dem Polygon)
 		if (generatedPlankLayer) {
 			renderer.drawGeneratedPlanks(
@@ -67,8 +99,12 @@
 
 		// Fugenband zwischen benachbarten Dielen zeichnen
 		if (jointBandLayer) {
-			const joints = calculateJoints(state.generatedPlanks, state.polygonPoints);
-			renderer.drawJointBands(Konva, jointBandLayer, joints.segments, conv);
+			if (state.withJointBand) {
+				const joints = calculateJoints(state.generatedPlanks, state.polygonPoints);
+				renderer.drawJointBands(Konva, jointBandLayer, joints.segments, conv);
+			} else {
+				jointBandLayer.destroyChildren();
+			}
 		}
 	}
 
@@ -94,6 +130,8 @@
 			crosshairLayer = new Konva.Layer();
 			polygonLayer = new Konva.Layer();
 			plankLayer = new Konva.Layer();
+			crossBeamLayer = new Konva.Layer();
+			floorClawLayer = new Konva.Layer();
 			generatedPlankLayer = new Konva.Layer();
 			jointBandLayer = new Konva.Layer();
 			[
@@ -101,9 +139,11 @@
 				crosshairLayer,
 				polygonLayer,
 				plankLayer,
+				crossBeamLayer,
+				floorClawLayer,
 				generatedPlankLayer,
 				jointBandLayer
-			].forEach((l) => stage!.add(l));
+			].forEach((layer) => stage?.add(layer));
 
 			renderer.drawGrid(
 				Konva,

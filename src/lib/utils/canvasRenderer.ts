@@ -1,7 +1,9 @@
-import type { Plank } from '$lib/types';
+import type { Plank, CrossBeam } from '$lib/types';
+import { calculateFloorClawPositions } from '$lib/utils/geometry';
 import type { JointSegment } from './plankCalculator';
 import type { CoordinateConverter } from './coordinateUtils';
 import type KonvaType from 'konva';
+import { calculateCrossBeamIntersection } from './geometry';
 
 export function drawGrid(
 	Konva: typeof KonvaType,
@@ -273,6 +275,94 @@ export function drawJointBands(
 				points: [px, py1, px, py2],
 				stroke: '#000',
 				strokeWidth: 2
+			})
+		);
+	}
+
+	layer.draw();
+}
+
+export function drawCrossBeams(
+	Konva: typeof KonvaType,
+	layer: KonvaType.Layer,
+	crossBeams: CrossBeam[],
+	polygonPoints: number[],
+	conv: CoordinateConverter,
+	selectedIndex: number = -1
+) {
+	layer.destroyChildren();
+
+	if (crossBeams.length === 0) return;
+
+	for (let i = 0; i < crossBeams.length; i++) {
+		const beam = crossBeams[i];
+		const isSelected = i === selectedIndex;
+
+		// Polygon-Intersection berechnen
+		const intersectionPolygon = calculateCrossBeamIntersection(beam.y, beam.width, polygonPoints);
+
+		// Wenn Intersection berechnet werden konnte, zeichne das Polygon
+		if (intersectionPolygon.length >= 4) {
+			const pixelPoints: number[] = [];
+			for (let j = 0; j < intersectionPolygon.length; j += 2) {
+				pixelPoints.push(conv.mmToPx_X(intersectionPolygon[j]));
+				pixelPoints.push(conv.mmToPx_Y(intersectionPolygon[j + 1]));
+			}
+
+			// Transparenz basierend auf Auswahl
+			const fillOpacity = isSelected ? 0.3 : 0.1;
+
+			layer.add(
+				new Konva.Line({
+					points: pixelPoints,
+					stroke: '#1e3a8a',
+					strokeWidth: 2,
+					closed: pixelPoints.length >= 6,
+					fill: pixelPoints.length >= 6 ? `rgba(30, 58, 138, ${fillOpacity})` : undefined
+				})
+			);
+		}
+	}
+
+	layer.draw();
+}
+
+export function drawFloorClaws(
+	Konva: typeof KonvaType,
+	layer: KonvaType.Layer,
+	planks: Plank[],
+	crossBeams: CrossBeam[],
+	polygonPoints: number[],
+	plankWidth: number,
+	startFrom: 'left' | 'right',
+	conv: CoordinateConverter
+) {
+	layer.destroyChildren();
+
+	if (planks.length === 0 || crossBeams.length === 0) return;
+
+	// Bodenkrallen-Positionen berechnen
+	const positions = calculateFloorClawPositions(plankWidth, startFrom, polygonPoints, crossBeams);
+
+	// Durchmesser der Bodenkrallen = halbe Dielenbreite
+	const radiusMM = plankWidth / 4; // Radius = halber Durchmesser
+
+	for (const pos of positions) {
+		const xPx = conv.mmToPx_X(pos.x);
+		const yPx = conv.mmToPx_Y(pos.y);
+		const radiusPx = conv.mmToPx_X(radiusMM);
+
+		// Farbe: grün für Rand, hellblau für innen
+		const color = pos.isEdge ? '#04da39' : '#338eff';
+
+		layer.add(
+			new Konva.Circle({
+				x: xPx,
+				y: yPx,
+				radius: radiusPx,
+				fill: color,
+				stroke: color,
+				strokeWidth: 1
 			})
 		);
 	}

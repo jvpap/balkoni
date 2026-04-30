@@ -1,6 +1,8 @@
 <script lang="ts">
 	import Canvas from '$lib/components/Canvas.svelte';
 	import CanvasSizeSettings from '$lib/components/CanvasSizeSettings.svelte';
+	import CrossBeamList from '$lib/components/CrossBeamList.svelte';
+	import ImportExport from '$lib/components/ImportExport.svelte';
 	import MousePosition from '$lib/components/MousePosition.svelte';
 	import PointList from '$lib/components/PointList.svelte';
 	import { planStore } from '$lib/stores/planStore';
@@ -34,44 +36,55 @@
 		class:lg:w-10={sidebarCollapsed}
 	>
 		<div class="flex gap-2 items-center">
-			<button
-				type="button"
-				on:click={startDrawing}
-				class="flex-shrink-0 px-3 py-2 bg-red-300 hover:bg-red-700 text-white text-sm lg:text-xs rounded transition-colors cursor-pointer"
-			>
-				Löschen + Eckpunkte editieren
-			</button>
-			<button
-				type="button"
-				on:click={finishDrawing}
-				disabled={!$planStore.isDrawingPolygon}
-				class="flex-shrink-0 px-3 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white text-sm lg:text-xs rounded transition-colors cursor-pointer"
-			>
-				Fertig
-			</button>
+			{#if !sidebarCollapsed}
+				<button
+					type="button"
+					on:click={startDrawing}
+					class="flex-shrink-0 px-3 py-2 bg-red-300 hover:bg-red-700 text-white text-sm lg:text-xs rounded transition-colors cursor-pointer"
+				>
+					Löschen + Eckpunkte editieren
+				</button>
+				<button
+					type="button"
+					on:click={finishDrawing}
+					disabled={!$planStore.isDrawingPolygon}
+					class="flex-shrink-0 px-3 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white text-sm lg:text-xs rounded transition-colors cursor-pointer"
+				>
+					Fertig
+				</button>
+			{/if}
 			<!-- Collapse button only on desktop -->
 			<button
 				type="button"
 				on:click={() => (sidebarCollapsed = !sidebarCollapsed)}
 				title={sidebarCollapsed ? 'Eingabe einblenden' : 'Eingabe ausblenden'}
 				aria-label={sidebarCollapsed ? 'Eingabe einblenden' : 'Eingabe ausblenden'}
-				class="hidden lg:flex ml-auto flex-shrink-0 w-10 h-10 items-center justify-center rounded border border-gray-300 bg-white hover:bg-gray-100 text-gray-600 cursor-pointer"
+				class="hidden lg:flex flex-shrink-0 w-10 h-10 items-center justify-center rounded border border-gray-300 bg-white hover:bg-gray-100 text-gray-600 cursor-pointer"
+				class:ml-auto={!sidebarCollapsed}
 			>
 				{sidebarCollapsed ? '›' : '‹'}
 			</button>
 		</div>
 
-		<div class="flex-1 min-h-0 overflow-y-auto flex flex-col gap-4 lg:hidden">
+		<div class="flex-1 min-h-0 flex flex-col gap-4 lg:hidden">
 			<CanvasSizeSettings />
 			<MousePosition />
-			<PointList />
+			<div class="flex-1 min-h-0 overflow-y-auto flex flex-col gap-4">
+				<PointList />
+				<CrossBeamList />
+			</div>
+			<ImportExport />
 		</div>
 
 		{#if !sidebarCollapsed}
-			<div class="flex-1 min-h-0 overflow-y-auto flex flex-col gap-4 hidden lg:flex">
+			<div class="flex-1 min-h-0 flex flex-col gap-4 hidden lg:flex">
 				<CanvasSizeSettings />
 				<MousePosition />
-				<PointList />
+				<div class="flex-1 min-h-0 overflow-y-auto flex flex-col gap-4">
+					<PointList />
+					<CrossBeamList />
+				</div>
+				<ImportExport />
 			</div>
 		{/if}
 	</aside>
