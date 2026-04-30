@@ -3,7 +3,9 @@ import {
 	calculatePolygonArea,
 	pointInPolygon,
 	linePolygonIntersections,
-	getBoundingBox
+	getBoundingBox,
+	calculateCrossBeamIntersection,
+	calculateFloorClawPositions
 } from '$lib/utils/geometry';
 
 describe('calculatePolygonArea', () => {
@@ -96,5 +98,66 @@ describe('getBoundingBox', () => {
 	it('arbeitet auch mit negativen Koordinaten', () => {
 		const poly = [-50, -50, 50, -50, 50, 50, -50, 50];
 		expect(getBoundingBox(poly)).toEqual({ minX: -50, minY: -50, maxX: 50, maxY: 50 });
+	});
+});
+
+describe('calculateCrossBeamIntersection', () => {
+	const square = [0, 0, 100, 0, 100, 100, 0, 100];
+
+	it('liefert leeres Array für entartete Polygone', () => {
+		expect(calculateCrossBeamIntersection(50, 10, [])).toEqual([]);
+	});
+
+	it('berechnet Intersection für horizontalen Streifen durch Quadrat', () => {
+		const result = calculateCrossBeamIntersection(50, 10, square);
+		expect(result.length).toBeGreaterThan(0);
+		expect(result.length).toBeGreaterThanOrEqual(4);
+	});
+
+	it('berechnet Intersection für Streifen am oberen Rand', () => {
+		const result = calculateCrossBeamIntersection(0, 10, square);
+		expect(result.length).toBeGreaterThan(0);
+	});
+
+	it('berechnet Intersection für Streifen am unteren Rand', () => {
+		const result = calculateCrossBeamIntersection(90, 10, square);
+		expect(result.length).toBeGreaterThan(0);
+	});
+});
+
+describe('calculateFloorClawPositions', () => {
+	const square = [0, 0, 100, 0, 100, 100, 0, 100];
+	const crossBeams = [
+		{ y: 25, width: 10 },
+		{ y: 50, width: 10 },
+		{ y: 75, width: 10 }
+	];
+
+	it('liefert leeres Array für entartete Polygone', () => {
+		expect(calculateFloorClawPositions(20, 'left', [], crossBeams)).toEqual([]);
+	});
+
+	it('liefert leeres Array für keine Querbalken', () => {
+		expect(calculateFloorClawPositions(20, 'left', square, [])).toEqual([]);
+	});
+
+	it('berechnet Positionen für linkes Verlegen', () => {
+		const result = calculateFloorClawPositions(20, 'left', square, crossBeams);
+		expect(result.length).toBeGreaterThan(0);
+	});
+
+	it('berechnet Positionen für rechtes Verlegen', () => {
+		const result = calculateFloorClawPositions(20, 'right', square, crossBeams);
+		expect(result.length).toBeGreaterThan(0);
+	});
+
+	it('markiert Randbodenkrallen korrekt', () => {
+		const result = calculateFloorClawPositions(20, 'left', square, crossBeams);
+		expect(result.some((p) => p.isEdge)).toBe(true);
+	});
+
+	it('markiert innere Bodenkrallen korrekt', () => {
+		const result = calculateFloorClawPositions(20, 'left', square, crossBeams);
+		expect(result.some((p) => !p.isEdge)).toBe(true);
 	});
 });

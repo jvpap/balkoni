@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { planStore } from '$lib/stores/planStore';
 	import { calculateJoints } from '$lib/utils/plankCalculator';
+	import { calculateFloorClawPositions } from '$lib/utils/geometry';
 
 	// Gruppiere generierte Dielen nach exakter Länge in mm
 	$: planksByLength = $planStore.generatedPlanks.reduce(
@@ -26,6 +27,17 @@
 		$planStore.generatedPlanks,
 		$planStore.polygonPoints
 	).totalLength;
+
+	// Bodenkrallen berechnen
+	$: floorClawPositions = calculateFloorClawPositions(
+		$planStore.plankWidth,
+		$planStore.startFrom,
+		$planStore.polygonPoints,
+		$planStore.crossBeams
+	);
+
+	$: edgeFloorClaws = floorClawPositions.filter((p) => p.isEdge).length;
+	$: innerFloorClaws = floorClawPositions.filter((p) => !p.isEdge).length;
 </script>
 
 <div class="h-full p-4 border border-gray-200 rounded-lg bg-gray-50 flex flex-col">
@@ -59,10 +71,22 @@
 							<td class="py-1">Gesamtlänge:</td>
 							<td class="text-right py-1">{Math.round(totalLengthMm)} mm</td>
 						</tr>
-						<tr>
-							<td class="py-1">Fugenband:</td>
-							<td class="text-right py-1">{Math.round(jointBandMm)} mm</td>
-						</tr>
+						{#if $planStore.withJointBand}
+							<tr>
+								<td class="py-1">Fugenband:</td>
+								<td class="text-right py-1">{Math.round(jointBandMm)} mm</td>
+							</tr>
+						{/if}
+						{#if $planStore.withFloorClaws}
+							<tr>
+								<td class="py-1">Randbodenkrallen:</td>
+								<td class="text-right py-1">{edgeFloorClaws}</td>
+							</tr>
+							<tr>
+								<td class="py-1">Bodenkrallen:</td>
+								<td class="text-right py-1">{innerFloorClaws}</td>
+							</tr>
+						{/if}
 					</tfoot>
 				</table>
 			</div>

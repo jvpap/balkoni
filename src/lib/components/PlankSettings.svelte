@@ -61,6 +61,28 @@
 				⇐ Rechts
 			</label>
 		</div>
+		<div class="mt-2">
+			<label class="flex items-center gap-2 text-sm cursor-pointer">
+				<input
+					type="checkbox"
+					checked={$planStore.withJointBand}
+					on:change={() => planStore.toggleJointBand()}
+					class="w-auto m-0"
+				/>
+				mit Fugenband
+			</label>
+		</div>
+		<div class="mt-2">
+			<label class="flex items-center gap-2 text-sm cursor-pointer">
+				<input
+					type="checkbox"
+					checked={$planStore.withFloorClaws}
+					on:change={() => planStore.toggleFloorClaws()}
+					class="w-auto m-0"
+				/>
+				mit Bodenkrallen
+			</label>
+		</div>
 	</div>
 
 	<button
