@@ -219,7 +219,10 @@
 			</div>
 			<button
 				on:click={addPoint}
-				disabled={newPointX === '' || newPointY === '' || isNaN(parseInt(newPointX)) || isNaN(parseInt(newPointY))}
+				disabled={newPointX === '' ||
+					newPointY === '' ||
+					isNaN(parseInt(newPointX)) ||
+					isNaN(parseInt(newPointY))}
 				title="Neuen Eckpunkt hinzufügen"
 				class="px-1.5 py-0.5 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white text-[10px] rounded transition-colors cursor-pointer whitespace-nowrap"
 			>

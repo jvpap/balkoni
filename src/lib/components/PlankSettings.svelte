@@ -43,7 +43,7 @@
 	<div class="my-3">
 		<div class="flex items-center gap-4">
 			<span class="text-sm text-gray-700">Verlegen von:</span>
-				<label class="flex items-center gap-1.5 text-sm cursor-pointer">
+			<label class="flex items-center gap-1.5 text-sm cursor-pointer">
 				<input
 					type="radio"
 					name="startFrom"
@@ -70,27 +70,27 @@
 		</div>
 		<div class="mt-2">
 			<label class="flex items-center gap-2 text-sm cursor-pointer">
-			<input
-				type="checkbox"
-				checked={$planStore.withJointBand}
-				on:change={() => planStore.toggleJointBand()}
-				class="w-auto m-0"
-				title="Fugenband zwischen Dielen berechnen und anzeigen"
-			/>
-			mit Fugenband
-		</label>
+				<input
+					type="checkbox"
+					checked={$planStore.withJointBand}
+					on:change={() => planStore.toggleJointBand()}
+					class="w-auto m-0"
+					title="Fugenband zwischen Dielen berechnen und anzeigen"
+				/>
+				mit Fugenband
+			</label>
 		</div>
 		<div class="mt-2">
 			<label class="flex items-center gap-2 text-sm cursor-pointer">
-			<input
-				type="checkbox"
-				checked={$planStore.withFloorClaws}
-				on:change={() => planStore.toggleFloorClaws()}
-				class="w-auto m-0"
-				title="Bodenkrallen an Querbalken-Positionen anzeigen"
-			/>
-			mit Bodenkrallen
-		</label>
+				<input
+					type="checkbox"
+					checked={$planStore.withFloorClaws}
+					on:change={() => planStore.toggleFloorClaws()}
+					class="w-auto m-0"
+					title="Bodenkrallen an Querbalken-Positionen anzeigen"
+				/>
+				mit Bodenkrallen
+			</label>
 		</div>
 	</div>
 

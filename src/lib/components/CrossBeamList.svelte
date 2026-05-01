@@ -147,7 +147,10 @@
 			</div>
 			<button
 				on:click={addBeam}
-				disabled={newBeamY === '' || newBeamWidth === '' || isNaN(parseInt(newBeamY)) || isNaN(parseInt(newBeamWidth))}
+				disabled={newBeamY === '' ||
+					newBeamWidth === '' ||
+					isNaN(parseInt(newBeamY)) ||
+					isNaN(parseInt(newBeamWidth))}
 				title="Neuen Querbalken hinzufügen"
 				class="px-1.5 py-0.5 bg-emerald-600 hover:bg-emerald-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white text-[10px] rounded transition-colors cursor-pointer whitespace-nowrap"
 			>
