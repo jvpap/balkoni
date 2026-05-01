@@ -10,7 +10,7 @@
 		</clipPath>
 	</defs>
 
-	<!-- Holzdielen, auf das Polygon zugeschnitten -->
+	<!-- Dielen, auf das Polygon zugeschnitten -->
 	<g clip-path="url(#polyClip)">
 		<rect x="0" y="5"  width="32" height="3.6" fill="#c08552"/>
 		<rect x="0" y="9"  width="32" height="3.6" fill="#a06a3f"/>

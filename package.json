@@ -2,7 +2,7 @@
 	"name": "balkon-dielen-planer",
 	"version": "1.0.0",
 	"private": true,
-	"description": "Web-Planer für Balkon-Holzdielen: Polygon-Umriss zeichnen, automatische Dielenverlegung, Zuschnitt-Optimierung mit minimalem Verschnitt.",
+	"description": "Web-Planer für Balkon-Dielen: Polygon-Umriss zeichnen, automatische Dielenverlegung, Zuschnitt-Optimierung mit minimalem Verschnitt.",
 	"author": "Johann Vieselthaler",
 	"license": "MIT",
 	"type": "module",

@@ -42,7 +42,7 @@
 					on:click={startDrawing}
 					class="flex-shrink-0 px-3 py-2 bg-red-300 hover:bg-red-700 text-white text-sm lg:text-xs rounded transition-colors cursor-pointer"
 				>
-					Löschen + Eckpunkte editieren
+					Löschen + Eckpunkte setzen
 				</button>
 				<button
 					type="button"
