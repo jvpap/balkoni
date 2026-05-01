@@ -135,6 +135,12 @@ function createPlanStore() {
 				onPlanksGenerated();
 			}
 		},
+		clearGeneratedPlanks: () => {
+			persist(() => ({
+				generatedPlanks: [],
+				selectedPlankIndex: -1
+			}));
+		},
 		setOnPlanksGenerated: (callback: (() => void) | null) => {
 			onPlanksGenerated = callback;
 		},

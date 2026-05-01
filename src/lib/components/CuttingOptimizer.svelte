@@ -166,6 +166,7 @@
 			on:change={updateLengths}
 			on:blur={updateLengths}
 			placeholder="z.B. 2000, 3000, 4500"
+			title="Verfügbare Standardlängen der Rohdielen in mm, kommasepariert"
 			class="w-full px-2 py-1.5 border border-gray-300 rounded text-sm font-mono"
 		/>
 	</div>
@@ -177,6 +178,7 @@
 				checked={$planStore.cuttable}
 				on:change={(e) => planStore.setCuttable((e.target as HTMLInputElement).checked)}
 				class="cursor-pointer"
+				title="Wenn aktiviert, werden Dielen optimal zugeschnitten"
 			/>
 			kann zugeschnitten werden
 		</label>
@@ -201,6 +203,7 @@
 						}
 					}}
 					class="cursor-pointer"
+					title="Globale ILP-Optimierung für bessere Ergebnisse (langsamer)"
 				/>
 				Globale Optimierung (langsam, aber optimal)
 			</label>
@@ -219,6 +222,7 @@
 					on:blur={updateKerf}
 					min="0"
 					max="20"
+					title="Breite des Sägeschnitts in mm"
 					class="w-20 px-1.5 py-1.5 border border-gray-300 rounded text-sm"
 				/>
 			</label>

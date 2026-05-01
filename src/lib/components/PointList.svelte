@@ -1,8 +1,8 @@
 <script lang="ts">
 	import { planStore, polygonArea } from '$lib/stores/planStore';
 
-	let newPointX = '';
-	let newPointY = '';
+	let newPointX = '0';
+	let newPointY = '0';
 	let draggedIndex: number | null = null;
 
 	// Punkte sind bereits in mm gespeichert
@@ -34,8 +34,8 @@
 		const x = parseInt(newPointX) || 0;
 		const y = parseInt(newPointY) || 0;
 		planStore.addPolygonPoint(x, y);
-		newPointX = '';
-		newPointY = '';
+		newPointX = '0';
+		newPointY = '0';
 	}
 
 	function handleDragStart(index: number, event: DragEvent) {
@@ -149,6 +149,8 @@
 										id="point-x-{i}"
 										type="number"
 										value={toMM(px)}
+										min="0"
+										title="X-Koordinate des Eckpunkts in mm"
 										on:click|stopPropagation
 										on:change={(e) => updateX(i, e.currentTarget.value)}
 										on:blur={(e) => updateX(i, e.currentTarget.value)}
@@ -164,6 +166,8 @@
 										id="point-y-{i}"
 										type="number"
 										value={toMM(py)}
+										min="0"
+										title="Y-Koordinate des Eckpunkts in mm"
 										on:click|stopPropagation
 										on:change={(e) => updateY(i, e.currentTarget.value)}
 										on:blur={(e) => updateY(i, e.currentTarget.value)}
@@ -193,7 +197,9 @@
 					id="new-point-x"
 					type="number"
 					bind:value={newPointX}
+					min="0"
 					placeholder="0"
+					title="X-Koordinate für neuen Eckpunkt in mm"
 					class="w-full min-w-0 px-1 py-0.5 border border-slate-300 rounded text-[10px] font-mono focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20"
 				/>
 			</div>
@@ -205,13 +211,16 @@
 					id="new-point-y"
 					type="number"
 					bind:value={newPointY}
+					min="0"
 					placeholder="0"
+					title="Y-Koordinate für neuen Eckpunkt in mm"
 					class="w-full min-w-0 px-1 py-0.5 border border-slate-300 rounded text-[10px] font-mono focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20"
 				/>
 			</div>
 			<button
 				on:click={addPoint}
-				disabled={newPointX === '' || newPointY === ''}
+				disabled={newPointX === '' || newPointY === '' || isNaN(parseInt(newPointX)) || isNaN(parseInt(newPointY))}
+				title="Neuen Eckpunkt hinzufügen"
 				class="px-1.5 py-0.5 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white text-[10px] rounded transition-colors cursor-pointer whitespace-nowrap"
 			>
 				+

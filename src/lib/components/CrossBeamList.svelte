@@ -1,8 +1,8 @@
 <script lang="ts">
 	import { planStore } from '$lib/stores/planStore';
 
-	let newBeamY = '';
-	let newBeamWidth = '';
+	let newBeamY = '0';
+	let newBeamWidth = '0';
 
 	// Querbalken sind bereits in mm gespeichert
 	function toMM(val: number): number {
@@ -33,8 +33,8 @@
 		const y = parseInt(newBeamY) || 0;
 		const width = parseInt(newBeamWidth) || 0;
 		planStore.addCrossBeam(y, width);
-		newBeamY = '';
-		newBeamWidth = '';
+		newBeamY = '0';
+		newBeamWidth = '0';
 	}
 </script>
 
@@ -80,6 +80,8 @@
 									id="beam-y-{i}"
 									type="number"
 									value={toMM(beam.y)}
+									min="0"
+									title="Y-Position des Querbalkens in mm"
 									on:change={(e) => updateY(i, e.currentTarget.value)}
 									on:blur={(e) => updateY(i, e.currentTarget.value)}
 									class="w-full min-w-0 px-1.5 py-1 border border-slate-300 rounded text-xs font-mono focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
@@ -94,6 +96,8 @@
 									id="beam-width-{i}"
 									type="number"
 									value={toMM(beam.width)}
+									min="0"
+									title="Breite des Querbalkens in mm"
 									on:change={(e) => updateWidth(i, e.currentTarget.value)}
 									on:blur={(e) => updateWidth(i, e.currentTarget.value)}
 									class="w-full min-w-0 px-1.5 py-1 border border-slate-300 rounded text-xs font-mono focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
@@ -121,7 +125,9 @@
 					id="new-beam-y"
 					type="number"
 					bind:value={newBeamY}
+					min="0"
 					placeholder="0"
+					title="Y-Position für neuen Querbalken in mm"
 					class="w-full min-w-0 px-1 py-0.5 border border-slate-300 rounded text-[10px] font-mono focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20"
 				/>
 			</div>
@@ -133,13 +139,16 @@
 					id="new-beam-width"
 					type="number"
 					bind:value={newBeamWidth}
+					min="0"
 					placeholder="0"
+					title="Breite für neuen Querbalken in mm"
 					class="w-full min-w-0 mx-5 px-1 py-0.5 border border-slate-300 rounded text-[10px] font-mono focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20"
 				/>
 			</div>
 			<button
 				on:click={addBeam}
-				disabled={newBeamY === '' || newBeamWidth === ''}
+				disabled={newBeamY === '' || newBeamWidth === '' || isNaN(parseInt(newBeamY)) || isNaN(parseInt(newBeamWidth))}
+				title="Neuen Querbalken hinzufügen"
 				class="px-1.5 py-0.5 bg-emerald-600 hover:bg-emerald-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white text-[10px] rounded transition-colors cursor-pointer whitespace-nowrap"
 			>
 				+

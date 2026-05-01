@@ -353,7 +353,7 @@ export function drawFloorClaws(
 		const radiusPx = conv.mmToPx_X(radiusMM);
 
 		// Farbe: grün für Rand, hellblau für innen
-		const color = pos.isEdge ? '#04da39' : '#338eff';
+		const color = pos.isEdge ? '#04da39' : '#96c4fc';
 
 		layer.add(
 			new Konva.Circle({

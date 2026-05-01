@@ -2,6 +2,7 @@
 	import Canvas from '$lib/components/Canvas.svelte';
 	import CanvasSizeSettings from '$lib/components/CanvasSizeSettings.svelte';
 	import CrossBeamList from '$lib/components/CrossBeamList.svelte';
+	import HelpModal from '$lib/components/HelpModal.svelte';
 	import ImportExport from '$lib/components/ImportExport.svelte';
 	import MousePosition from '$lib/components/MousePosition.svelte';
 	import PointList from '$lib/components/PointList.svelte';
@@ -12,6 +13,7 @@
 
 	let canvasStage: any = null;
 	let sidebarCollapsed = false;
+	let helpOpen = false;
 
 	function startDrawing() {
 		planStore.startDrawing();
@@ -39,7 +41,16 @@
 			{#if !sidebarCollapsed}
 				<button
 					type="button"
+					on:click={() => (helpOpen = true)}
+					title="Hilfe anzeigen"
+					class="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded border border-gray-300 bg-white hover:bg-gray-100 text-gray-600 cursor-pointer"
+				>
+					?
+				</button>
+				<button
+					type="button"
 					on:click={startDrawing}
+					title="Polygon löschen und neue Eckpunkte setzen"
 					class="flex-shrink-0 px-3 py-2 bg-red-300 hover:bg-red-700 text-white text-sm lg:text-xs rounded transition-colors cursor-pointer"
 				>
 					Löschen + Eckpunkte setzen
@@ -48,6 +59,7 @@
 					type="button"
 					on:click={finishDrawing}
 					disabled={!$planStore.isDrawingPolygon}
+					title="Polygon-Zeichnung beenden"
 					class="flex-shrink-0 px-3 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white text-sm lg:text-xs rounded transition-colors cursor-pointer"
 				>
 					Fertig
@@ -65,6 +77,18 @@
 				{sidebarCollapsed ? '›' : '‹'}
 			</button>
 		</div>
+		{#if sidebarCollapsed}
+			<div class="hidden lg:flex justify-center mt-2">
+				<button
+					type="button"
+					on:click={() => (helpOpen = true)}
+					title="Hilfe anzeigen"
+					class="flex-shrink-0 w-10 h-10 items-center justify-center rounded border border-gray-300 bg-white hover:bg-gray-100 text-gray-600 cursor-pointer"
+				>
+					?
+				</button>
+			</div>
+		{/if}
 
 		<div class="flex-1 min-h-0 flex flex-col gap-4 lg:hidden">
 			<CanvasSizeSettings />
@@ -109,3 +133,5 @@
 		</div>
 	</div>
 </main>
+
+<HelpModal bind:open={helpOpen} on:close={() => (helpOpen = false)} />
